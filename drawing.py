@@ -8,20 +8,41 @@ from constants import (
     GRID_COLS,
     GRID_ROWS,
     GRID_SHADOW,
-    HIGHLIGHT,
     SELECTED_BORDER,
     SOIL_INNER,
     SOIL_LINE,
     SOIL_OUTER,
+    WATER_BLUE,
 )
 
 
 def plot_bounds(position):
-    row = (position - 1) // GRID_COLS
-    col = (position - 1) % GRID_COLS
+    row = (
+        position - 1
+    ) // GRID_COLS
 
-    x1 = CANVAS_MARGIN + col * (CELL_SIZE + CELL_GAP)
-    y1 = CANVAS_MARGIN + row * (CELL_SIZE + CELL_GAP)
+    col = (
+        position - 1
+    ) % GRID_COLS
+
+    x1 = (
+        CANVAS_MARGIN
+        + col
+        * (
+            CELL_SIZE
+            + CELL_GAP
+        )
+    )
+
+    y1 = (
+        CANVAS_MARGIN
+        + row
+        * (
+            CELL_SIZE
+            + CELL_GAP
+        )
+    )
+
     x2 = x1 + CELL_SIZE
     y2 = y1 + CELL_SIZE
 
@@ -29,14 +50,33 @@ def plot_bounds(position):
 
 
 def pixel_to_plot(x, y):
-    for position in range(1, GRID_ROWS * GRID_COLS + 1):
-        x1, y1, x2, y2 = plot_bounds(position)
-        if x1 <= x <= x2 and y1 <= y <= y2:
+    total = (
+        GRID_ROWS
+        * GRID_COLS
+    )
+
+    for position in range(
+        1,
+        total + 1,
+    ):
+        x1, y1, x2, y2 = (
+            plot_bounds(position)
+        )
+
+        if (
+            x1 <= x <= x2
+            and y1 <= y <= y2
+        ):
             return position
+
     return None
 
 
-def draw_garden(canvas, garden, selected_plot=None):
+def draw_garden(
+    canvas,
+    garden,
+    selected_plot=None,
+):
     canvas.delete("all")
 
     canvas.create_rectangle(
@@ -44,70 +84,131 @@ def draw_garden(canvas, garden, selected_plot=None):
         0,
         CANVAS_WIDTH,
         CANVAS_HEIGHT,
-        fill="#f7f1e8",
+        fill="#f8f2e8",
         outline="",
     )
 
-    draw_decorations(canvas)
+    draw_watering_can(canvas)
+    draw_shovel(canvas)
 
     for plot in garden.plots:
-        draw_plot(canvas, plot, plot.position == selected_plot)
+        draw_plot(
+            canvas,
+            plot,
+            selected=(
+                plot.position
+                == selected_plot
+            ),
+        )
 
 
-def draw_decorations(canvas):
-    # Penyiram kiri bawah
-    base_x = 54
-    base_y = CANVAS_HEIGHT - 48
+def draw_watering_can(canvas):
+    x = 42
+    y = CANVAS_HEIGHT - 38
 
-    canvas.create_oval(base_x - 18, base_y - 20, base_x + 18, base_y + 12,
-                       fill="#9bb089", outline="#6f7f62", width=2)
-    canvas.create_arc(base_x - 24, base_y - 20, base_x + 8, base_y + 8,
-                      start=30, extent=240, style="arc",
-                      outline="#6f7f62", width=3)
-    canvas.create_polygon(
-        base_x + 16, base_y - 8,
-        base_x + 44, base_y - 2,
-        base_x + 34, base_y + 8,
-        base_x + 12, base_y + 2,
-        fill="#9bb089",
-        outline="#6f7f62",
-        width=2,
-    )
-    canvas.create_line(base_x + 40, base_y + 1, base_x + 55, base_y - 8,
-                       fill="#6f7f62", width=2)
-
-    # Sekop kanan atas
-    sx = CANVAS_WIDTH - 70
-    sy = 175
-
-    canvas.create_line(sx, sy, sx + 28, sy - 28, fill="#9e6a3f", width=6)
-    canvas.create_oval(sx + 24, sy - 32, sx + 40, sy - 16,
-                       fill="#9e6a3f", outline="#8a5730", width=2)
-    canvas.create_polygon(
-        sx - 12, sy + 6,
-        sx + 2, sy - 10,
-        sx + 18, sy + 4,
-        sx + 2, sy + 20,
-        fill="#b9b9b9",
-        outline="#8f8f8f",
+    canvas.create_oval(
+        x - 14,
+        y - 22,
+        x + 20,
+        y + 10,
+        fill="#9cab86",
+        outline="#69795d",
         width=2,
     )
 
+    canvas.create_arc(
+        x - 24,
+        y - 22,
+        x + 6,
+        y + 10,
+        start=25,
+        extent=250,
+        style="arc",
+        outline="#69795d",
+        width=3,
+    )
 
-def draw_plot(canvas, plot, selected=False):
-    x1, y1, x2, y2 = plot_bounds(plot.position)
+    canvas.create_polygon(
+        x + 16,
+        y - 10,
+        x + 46,
+        y - 3,
+        x + 36,
+        y + 7,
+        x + 12,
+        y + 1,
+        fill="#9cab86",
+        outline="#69795d",
+        width=2,
+    )
+
+    canvas.create_line(
+        x + 41,
+        y + 1,
+        x + 54,
+        y - 7,
+        fill="#69795d",
+        width=2,
+    )
+
+
+def draw_shovel(canvas):
+    x = CANVAS_WIDTH - 58
+    y = 118
+
+    canvas.create_line(
+        x,
+        y,
+        x + 24,
+        y - 24,
+        fill="#9a673e",
+        width=6,
+    )
+
+    canvas.create_oval(
+        x + 20,
+        y - 29,
+        x + 35,
+        y - 14,
+        fill="#a97243",
+        outline="#81532f",
+        width=2,
+    )
+
+    canvas.create_polygon(
+        x - 12,
+        y + 6,
+        x + 1,
+        y - 9,
+        x + 16,
+        y + 4,
+        x + 2,
+        y + 19,
+        fill="#b8b8b8",
+        outline="#858585",
+        width=2,
+    )
+
+
+def draw_plot(
+    canvas,
+    plot,
+    selected=False,
+):
+    x1, y1, x2, y2 = (
+        plot_bounds(
+            plot.position
+        )
+    )
 
     canvas.create_rectangle(
         x1 + 4,
-        y1 + 6,
+        y1 + 5,
         x2 + 4,
-        y2 + 6,
+        y2 + 5,
         fill=GRID_SHADOW,
         outline="",
     )
-
-    border_color = SELECTED_BORDER if selected else GRID_BORDER
-    border_width = 4 if selected else 3
 
     canvas.create_rectangle(
         x1,
@@ -115,262 +216,772 @@ def draw_plot(canvas, plot, selected=False):
         x2,
         y2,
         fill=SOIL_OUTER,
-        outline=border_color,
-        width=border_width,
+        outline=(
+            SELECTED_BORDER
+            if selected
+            else GRID_BORDER
+        ),
+        width=(
+            4
+            if selected
+            else 2
+        ),
     )
 
-    inner_pad = 10
+    pad = 9
+
     canvas.create_rectangle(
-        x1 + inner_pad,
-        y1 + inner_pad,
-        x2 - inner_pad,
-        y2 - inner_pad,
+        x1 + pad,
+        y1 + pad,
+        x2 - pad,
+        y2 - pad,
         fill=SOIL_INNER,
         outline="",
     )
 
     if plot.plant is None:
-        draw_empty_soil(canvas, x1 + inner_pad, y1 + inner_pad, x2 - inner_pad, y2 - inner_pad)
+        draw_empty_soil(
+            canvas,
+            x1 + pad,
+            y1 + pad,
+            x2 - pad,
+            y2 - pad,
+        )
     else:
-        draw_plant(canvas, plot.plant, x1 + inner_pad, y1 + inner_pad, x2 - inner_pad, y2 - inner_pad)
+        draw_plant(
+            canvas,
+            plot.plant,
+            x1 + pad,
+            y1 + pad,
+            x2 - pad,
+            y2 - pad,
+        )
 
-    canvas.create_oval(x1 + 6, y1 + 6, x1 + 28, y1 + 28, fill="#fff4dd", outline="")
-    canvas.create_text(x1 + 17, y1 + 17, text=str(plot.position), fill="#7a5b39", font=("Arial", 10, "bold"))
+    canvas.create_oval(
+        x1 + 5,
+        y1 + 5,
+        x1 + 26,
+        y1 + 26,
+        fill="#fff4dc",
+        outline="",
+    )
+
+    canvas.create_text(
+        x1 + 15.5,
+        y1 + 15.5,
+        text=str(
+            plot.position
+        ),
+        fill="#725333",
+        font=(
+            "Arial",
+            9,
+            "bold",
+        ),
+    )
 
 
-def draw_empty_soil(canvas, x1, y1, x2, y2):
-    mid_x = (x1 + x2) / 2
-    canvas.create_line(x1 + 16, y2 - 30, x2 - 16, y2 - 26, fill=SOIL_LINE, width=3, smooth=True)
-    canvas.create_line(x1 + 18, y2 - 48, x2 - 18, y2 - 44, fill=SOIL_LINE, width=3, smooth=True)
-    canvas.create_line(x1 + 20, y2 - 66, x2 - 20, y2 - 62, fill=SOIL_LINE, width=3, smooth=True)
-    canvas.create_line(mid_x - 20, y2 - 16, mid_x + 20, y2 - 14, fill="#a36d3d", width=2, smooth=True)
+def draw_empty_soil(
+    canvas,
+    x1,
+    y1,
+    x2,
+    y2,
+):
+    canvas.create_line(
+        x1 + 14,
+        y2 - 26,
+        x2 - 14,
+        y2 - 23,
+        fill=SOIL_LINE,
+        width=3,
+        smooth=True,
+    )
+
+    canvas.create_line(
+        x1 + 17,
+        y2 - 43,
+        x2 - 18,
+        y2 - 40,
+        fill=SOIL_LINE,
+        width=3,
+        smooth=True,
+    )
+
+    canvas.create_line(
+        x1 + 20,
+        y2 - 60,
+        x2 - 20,
+        y2 - 57,
+        fill=SOIL_LINE,
+        width=3,
+        smooth=True,
+    )
 
 
-def draw_plant(canvas, plant, x1, y1, x2, y2):
+def draw_plant(
+    canvas,
+    plant,
+    x1,
+    y1,
+    x2,
+    y2,
+):
     if plant.is_dead:
-        draw_dead_plant(canvas, x1, y1, x2, y2)
-        draw_status_icons(canvas, plant, x1, y1, x2, y2)
-        return
+        draw_dead_plant(
+            canvas,
+            x1,
+            y1,
+            x2,
+            y2,
+        )
 
-    stage = plant.stage_level
+    elif plant.stage_level == 0:
+        draw_sprout(
+            canvas,
+            plant,
+            x1,
+            y1,
+            x2,
+            y2,
+        )
 
-    if stage == 0:
-        draw_sprout(canvas, plant, x1, y1, x2, y2)
-    elif stage == 1:
-        draw_small_plant(canvas, plant, x1, y1, x2, y2)
-    elif stage == 2:
-        draw_mid_plant(canvas, plant, x1, y1, x2, y2)
+    elif plant.stage_level == 1:
+        draw_small_plant(
+            canvas,
+            plant,
+            x1,
+            y1,
+            x2,
+            y2,
+        )
+
+    elif plant.stage_level == 2:
+        draw_medium_plant(
+            canvas,
+            plant,
+            x1,
+            y1,
+            x2,
+            y2,
+        )
+
     else:
-        draw_mature_plant(canvas, plant, x1, y1, x2, y2)
+        draw_mature_plant(
+            canvas,
+            plant,
+            x1,
+            y1,
+            x2,
+            y2,
+        )
 
-    draw_status_icons(canvas, plant, x1, y1, x2, y2)
+    draw_status(
+        canvas,
+        plant,
+        x1,
+        y1,
+        x2,
+        y2,
+    )
 
 
-def draw_status_icons(canvas, plant, x1, y1, x2, y2):
+def draw_status(
+    canvas,
+    plant,
+    x1,
+    y1,
+    x2,
+    y2,
+):
     if plant.watered_today:
-        drop_x = x2 - 18
-        drop_y = y1 + 18
-        canvas.create_oval(drop_x - 6, drop_y - 2, drop_x + 6, drop_y + 10, fill="#72bce8", outline="")
-        canvas.create_polygon(drop_x, drop_y - 10, drop_x - 6, drop_y + 1, drop_x + 6, drop_y + 1,
-                              fill="#72bce8", outline="")
+        x = x2 - 14
+        y = y1 + 16
+
+        canvas.create_oval(
+            x - 5,
+            y,
+            x + 5,
+            y + 10,
+            fill=WATER_BLUE,
+            outline="",
+        )
+
+        canvas.create_polygon(
+            x,
+            y - 8,
+            x - 5,
+            y + 2,
+            x + 5,
+            y + 2,
+            fill=WATER_BLUE,
+            outline="",
+        )
 
     if plant.cared_today:
-        sx = x1 + 18
-        sy = y1 + 18
-        canvas.create_line(sx - 5, sy, sx + 5, sy, fill=HIGHLIGHT, width=2)
-        canvas.create_line(sx, sy - 5, sx, sy + 5, fill=HIGHLIGHT, width=2)
-        canvas.create_line(sx - 4, sy - 4, sx + 4, sy + 4, fill=HIGHLIGHT, width=2)
-        canvas.create_line(sx - 4, sy + 4, sx + 4, sy - 4, fill=HIGHLIGHT, width=2)
+        x = x1 + 16
+        y = y1 + 16
 
+        canvas.create_line(
+            x - 5,
+            y,
+            x + 5,
+            y,
+            fill="#f3c85d",
+            width=2,
+        )
 
-def draw_sprout(canvas, plant, x1, y1, x2, y2):
-    cx = (x1 + x2) / 2
-    base_y = y2 - 18
-    stem_top = y2 - 42
+        canvas.create_line(
+            x,
+            y - 5,
+            x,
+            y + 5,
+            fill="#f3c85d",
+            width=2,
+        )
 
-    canvas.create_line(cx, base_y, cx, stem_top, fill="#5f8a3d", width=3)
-    canvas.create_oval(cx - 16, stem_top - 8, cx - 2, stem_top + 6,
-                       fill=plant.leaf_color, outline="")
-    canvas.create_oval(cx + 2, stem_top - 8, cx + 16, stem_top + 6,
-                       fill=plant.leaf_color, outline="")
+        canvas.create_line(
+            x - 4,
+            y - 4,
+            x + 4,
+            y + 4,
+            fill="#f3c85d",
+            width=2,
+        )
 
-
-def draw_small_plant(canvas, plant, x1, y1, x2, y2):
-    cx = (x1 + x2) / 2
-    base_y = y2 - 18
-
-    canvas.create_line(cx, base_y, cx, y2 - 60, fill="#5f8a3d", width=4)
-    canvas.create_oval(cx - 26, y2 - 74, cx - 2, y2 - 50,
-                       fill=plant.leaf_color, outline="")
-    canvas.create_oval(cx + 2, y2 - 74, cx + 26, y2 - 50,
-                       fill=plant.leaf_color, outline="")
-    canvas.create_oval(cx - 30, y2 - 50, cx - 8, y2 - 30,
-                       fill=plant.leaf_color, outline="")
-    canvas.create_oval(cx + 8, y2 - 50, cx + 30, y2 - 30,
-                       fill=plant.leaf_color, outline="")
-
-
-def draw_mid_plant(canvas, plant, x1, y1, x2, y2):
-    cx = (x1 + x2) / 2
-    base_y = y2 - 18
-
-    canvas.create_line(cx, base_y, cx, y2 - 78, fill="#5f8a3d", width=5)
-
-    leaves = [
-        (cx - 34, y2 - 82, cx - 6, y2 - 54),
-        (cx + 6, y2 - 82, cx + 34, y2 - 54),
-        (cx - 40, y2 - 58, cx - 12, y2 - 28),
-        (cx + 12, y2 - 58, cx + 40, y2 - 28),
-        (cx - 20, y2 - 98, cx + 6, y2 - 70),
-        (cx - 6, y2 - 98, cx + 20, y2 - 70),
-    ]
-
-    for lx1, ly1, lx2, ly2 in leaves:
-        canvas.create_oval(lx1, ly1, lx2, ly2, fill=plant.leaf_color, outline="")
-
-
-def draw_mature_plant(canvas, plant, x1, y1, x2, y2):
-    kind = plant.kind
-
-    if kind == "tomat":
-        draw_mature_tomato(canvas, plant, x1, y1, x2, y2)
-    elif kind == "wortel":
-        draw_mature_carrot(canvas, plant, x1, y1, x2, y2)
-    elif kind == "stroberi":
-        draw_mature_strawberry(canvas, plant, x1, y1, x2, y2)
-    elif kind == "bunga_matahari":
-        draw_mature_sunflower(canvas, plant, x1, y1, x2, y2)
-    else:
-        draw_mid_plant(canvas, plant, x1, y1, x2, y2)
-
-
-def draw_mature_tomato(canvas, plant, x1, y1, x2, y2):
-    cx = (x1 + x2) / 2
-    base_y = y2 - 18
-
-    canvas.create_line(cx, base_y, cx, y2 - 86, fill="#5f8a3d", width=5)
-
-    leaves = [
-        (cx - 38, y2 - 90, cx - 10, y2 - 62),
-        (cx + 10, y2 - 90, cx + 38, y2 - 62),
-        (cx - 42, y2 - 60, cx - 14, y2 - 32),
-        (cx + 14, y2 - 60, cx + 42, y2 - 32),
-        (cx - 18, y2 - 102, cx + 8, y2 - 74),
-        (cx - 8, y2 - 102, cx + 18, y2 - 74),
-    ]
-
-    for leaf in leaves:
-        canvas.create_oval(*leaf, fill=plant.leaf_color, outline="")
-
-    fruits = [
-        (cx - 28, y2 - 30, cx - 4, y2 - 6),
-        (cx + 4, y2 - 30, cx + 28, y2 - 6),
-        (cx - 12, y2 - 18, cx + 12, y2 + 4),
-    ]
-
-    for fx1, fy1, fx2, fy2 in fruits:
-        canvas.create_oval(fx1, fy1, fx2, fy2, fill=plant.fruit_color, outline="#c85f28", width=2)
-        mx = (fx1 + fx2) / 2
-        canvas.create_line(mx, fy1 + 2, mx - 5, fy1 - 6, fill="#5f8a3d", width=2)
-        canvas.create_line(mx, fy1 + 2, mx + 5, fy1 - 6, fill="#5f8a3d", width=2)
-
-
-def draw_mature_carrot(canvas, plant, x1, y1, x2, y2):
-    cx = (x1 + x2) / 2
-    base_y = y2 - 18
-
-    for offset in (-18, 0, 18):
-        canvas.create_line(cx + offset, base_y - 16, cx + offset, y2 - 86, fill="#5f8a3d", width=4)
-        canvas.create_oval(cx + offset - 18, y2 - 96, cx + offset + 2, y2 - 72,
-                           fill=plant.leaf_color, outline="")
-        canvas.create_oval(cx + offset - 2, y2 - 98, cx + offset + 18, y2 - 74,
-                           fill=plant.leaf_color, outline="")
-        canvas.create_polygon(
-            cx + offset, base_y - 4,
-            cx + offset - 10, base_y - 34,
-            cx + offset + 10, base_y - 34,
-            fill=plant.fruit_color,
-            outline="#d46d20",
+        canvas.create_line(
+            x - 4,
+            y + 4,
+            x + 4,
+            y - 4,
+            fill="#f3c85d",
             width=2,
         )
 
 
-def draw_mature_strawberry(canvas, plant, x1, y1, x2, y2):
-    cx = (x1 + x2) / 2
-    base_y = y2 - 20
+def draw_sprout(
+    canvas,
+    plant,
+    x1,
+    y1,
+    x2,
+    y2,
+):
+    cx = (
+        x1 + x2
+    ) / 2
 
-    canvas.create_line(cx, base_y, cx, y2 - 82, fill="#5f8a3d", width=4)
+    base = y2 - 14
+    top = y2 - 40
 
-    leaves = [
-        (cx - 36, y2 - 86, cx - 8, y2 - 58),
-        (cx + 8, y2 - 86, cx + 36, y2 - 58),
-        (cx - 42, y2 - 58, cx - 12, y2 - 28),
-        (cx + 12, y2 - 58, cx + 42, y2 - 28),
-        (cx - 12, y2 - 104, cx + 12, y2 - 78),
-    ]
+    canvas.create_line(
+        cx,
+        base,
+        cx,
+        top,
+        fill="#5d873e",
+        width=3,
+    )
+
+    canvas.create_oval(
+        cx - 15,
+        top - 7,
+        cx - 1,
+        top + 7,
+        fill=plant.leaf_color,
+        outline="",
+    )
+
+    canvas.create_oval(
+        cx + 1,
+        top - 7,
+        cx + 15,
+        top + 7,
+        fill=plant.leaf_color,
+        outline="",
+    )
+
+
+def draw_small_plant(
+    canvas,
+    plant,
+    x1,
+    y1,
+    x2,
+    y2,
+):
+    cx = (
+        x1 + x2
+    ) / 2
+
+    base = y2 - 14
+
+    canvas.create_line(
+        cx,
+        base,
+        cx,
+        y2 - 56,
+        fill="#5d873e",
+        width=4,
+    )
+
+    leaves = (
+        (
+            cx - 24,
+            y2 - 67,
+            cx - 2,
+            y2 - 47,
+        ),
+        (
+            cx + 2,
+            y2 - 67,
+            cx + 24,
+            y2 - 47,
+        ),
+        (
+            cx - 28,
+            y2 - 47,
+            cx - 8,
+            y2 - 28,
+        ),
+        (
+            cx + 8,
+            y2 - 47,
+            cx + 28,
+            y2 - 28,
+        ),
+    )
 
     for leaf in leaves:
-        canvas.create_oval(*leaf, fill=plant.leaf_color, outline="")
+        canvas.create_oval(
+            *leaf,
+            fill=plant.leaf_color,
+            outline="",
+        )
 
-    fruits = [
-        (cx - 26, y2 - 30),
-        (cx + 18, y2 - 26),
-        (cx, y2 - 12),
-    ]
+
+def draw_medium_plant(
+    canvas,
+    plant,
+    x1,
+    y1,
+    x2,
+    y2,
+):
+    cx = (
+        x1 + x2
+    ) / 2
+
+    base = y2 - 14
+
+    canvas.create_line(
+        cx,
+        base,
+        cx,
+        y2 - 70,
+        fill="#5d873e",
+        width=4,
+    )
+
+    leaves = (
+        (
+            cx - 31,
+            y2 - 76,
+            cx - 7,
+            y2 - 52,
+        ),
+        (
+            cx + 7,
+            y2 - 76,
+            cx + 31,
+            y2 - 52,
+        ),
+        (
+            cx - 35,
+            y2 - 53,
+            cx - 11,
+            y2 - 29,
+        ),
+        (
+            cx + 11,
+            y2 - 53,
+            cx + 35,
+            y2 - 29,
+        ),
+        (
+            cx - 16,
+            y2 - 90,
+            cx + 4,
+            y2 - 67,
+        ),
+        (
+            cx - 4,
+            y2 - 90,
+            cx + 16,
+            y2 - 67,
+        ),
+    )
+
+    for leaf in leaves:
+        canvas.create_oval(
+            *leaf,
+            fill=plant.leaf_color,
+            outline="",
+        )
+
+
+def draw_mature_plant(
+    canvas,
+    plant,
+    x1,
+    y1,
+    x2,
+    y2,
+):
+    if plant.kind == "tomat":
+        draw_tomato(
+            canvas,
+            plant,
+            x1,
+            y1,
+            x2,
+            y2,
+        )
+
+    elif plant.kind == "wortel":
+        draw_carrot(
+            canvas,
+            plant,
+            x1,
+            y1,
+            x2,
+            y2,
+        )
+
+    elif plant.kind == "stroberi":
+        draw_strawberry(
+            canvas,
+            plant,
+            x1,
+            y1,
+            x2,
+            y2,
+        )
+
+    else:
+        draw_sunflower(
+            canvas,
+            plant,
+            x1,
+            y1,
+            x2,
+            y2,
+        )
+
+
+def draw_tomato(
+    canvas,
+    plant,
+    x1,
+    y1,
+    x2,
+    y2,
+):
+    draw_medium_plant(
+        canvas,
+        plant,
+        x1,
+        y1,
+        x2,
+        y2,
+    )
+
+    cx = (
+        x1 + x2
+    ) / 2
+
+    fruits = (
+        (
+            cx - 25,
+            y2 - 28,
+            cx - 5,
+            y2 - 8,
+        ),
+        (
+            cx + 5,
+            y2 - 28,
+            cx + 25,
+            y2 - 8,
+        ),
+        (
+            cx - 10,
+            y2 - 18,
+            cx + 10,
+            y2 + 1,
+        ),
+    )
+
+    for fruit in fruits:
+        canvas.create_oval(
+            *fruit,
+            fill=plant.fruit_color,
+            outline="#bf5726",
+            width=2,
+        )
+
+
+def draw_carrot(
+    canvas,
+    plant,
+    x1,
+    y1,
+    x2,
+    y2,
+):
+    cx = (
+        x1 + x2
+    ) / 2
+
+    base = y2 - 14
+
+    for offset in (
+        -17,
+        0,
+        17,
+    ):
+        canvas.create_line(
+            cx + offset,
+            base - 15,
+            cx + offset,
+            y2 - 75,
+            fill="#5d873e",
+            width=4,
+        )
+
+        canvas.create_oval(
+            cx + offset - 15,
+            y2 - 86,
+            cx + offset + 2,
+            y2 - 66,
+            fill=plant.leaf_color,
+            outline="",
+        )
+
+        canvas.create_oval(
+            cx + offset - 2,
+            y2 - 87,
+            cx + offset + 15,
+            y2 - 67,
+            fill=plant.leaf_color,
+            outline="",
+        )
+
+        canvas.create_polygon(
+            cx + offset,
+            base,
+            cx + offset - 9,
+            base - 27,
+            cx + offset + 9,
+            base - 27,
+            fill=plant.fruit_color,
+            outline="#ca6823",
+            width=2,
+        )
+
+
+def draw_strawberry(
+    canvas,
+    plant,
+    x1,
+    y1,
+    x2,
+    y2,
+):
+    draw_medium_plant(
+        canvas,
+        plant,
+        x1,
+        y1,
+        x2,
+        y2,
+    )
+
+    cx = (
+        x1 + x2
+    ) / 2
+
+    fruits = (
+        (
+            cx - 22,
+            y2 - 24,
+        ),
+        (
+            cx + 20,
+            y2 - 22,
+        ),
+        (
+            cx,
+            y2 - 10,
+        ),
+    )
 
     for fx, fy in fruits:
         canvas.create_polygon(
-            fx, fy + 16,
-            fx - 12, fy - 6,
-            fx + 12, fy - 6,
+            fx,
+            fy + 14,
+            fx - 10,
+            fy - 5,
+            fx + 10,
+            fy - 5,
             fill=plant.fruit_color,
-            outline="#a82b35",
+            outline="#a92e37",
             width=2,
         )
-        canvas.create_arc(fx - 10, fy - 12, fx + 10, fy + 4,
-                          start=0, extent=180, style="arc",
-                          outline="#5f8a3d", width=2)
-
-    # bunga kecil
-    canvas.create_oval(cx - 6, y2 - 72, cx + 6, y2 - 60, fill="#f7d96d", outline="")
-    for dx, dy in [(-10, -4), (10, -4), (0, -12), (-8, 8), (8, 8)]:
-        canvas.create_oval(cx + dx - 5, y2 - 66 + dy - 5, cx + dx + 5, y2 - 66 + dy + 5,
-                           fill="white", outline="")
 
 
-def draw_mature_sunflower(canvas, plant, x1, y1, x2, y2):
-    cx = (x1 + x2) / 2
-    base_y = y2 - 18
-    top_y = y2 - 98
+def draw_sunflower(
+    canvas,
+    plant,
+    x1,
+    y1,
+    x2,
+    y2,
+):
+    cx = (
+        x1 + x2
+    ) / 2
 
-    canvas.create_line(cx, base_y, cx, top_y + 12, fill="#5f8a3d", width=5)
-    canvas.create_oval(cx - 34, top_y - 10, cx - 8, top_y + 16, fill=plant.leaf_color, outline="")
-    canvas.create_oval(cx + 8, top_y - 10, cx + 34, top_y + 16, fill=plant.leaf_color, outline="")
-    canvas.create_oval(cx - 42, top_y + 18, cx - 14, top_y + 46, fill=plant.leaf_color, outline="")
-    canvas.create_oval(cx + 14, top_y + 18, cx + 42, top_y + 46, fill=plant.leaf_color, outline="")
+    base = y2 - 14
+    flower_y = y2 - 82
 
-    # kelopak
-    for px, py in [
-        (cx, top_y - 22),
-        (cx + 18, top_y - 14),
-        (cx + 26, top_y + 2),
-        (cx + 18, top_y + 18),
-        (cx, top_y + 26),
-        (cx - 18, top_y + 18),
-        (cx - 26, top_y + 2),
-        (cx - 18, top_y - 14),
-    ]:
-        canvas.create_oval(px - 10, py - 10, px + 10, py + 10, fill=plant.fruit_color, outline="")
+    canvas.create_line(
+        cx,
+        base,
+        cx,
+        flower_y + 10,
+        fill="#5d873e",
+        width=5,
+    )
 
-    canvas.create_oval(cx - 18, top_y - 18, cx + 18, top_y + 18, fill="#6b4b2a", outline="#54381d", width=2)
+    canvas.create_oval(
+        cx - 31,
+        y2 - 58,
+        cx - 6,
+        y2 - 34,
+        fill=plant.leaf_color,
+        outline="",
+    )
+
+    canvas.create_oval(
+        cx + 6,
+        y2 - 58,
+        cx + 31,
+        y2 - 34,
+        fill=plant.leaf_color,
+        outline="",
+    )
+
+    petals = (
+        (
+            cx,
+            flower_y - 19,
+        ),
+        (
+            cx + 16,
+            flower_y - 12,
+        ),
+        (
+            cx + 22,
+            flower_y + 3,
+        ),
+        (
+            cx + 15,
+            flower_y + 17,
+        ),
+        (
+            cx,
+            flower_y + 22,
+        ),
+        (
+            cx - 15,
+            flower_y + 17,
+        ),
+        (
+            cx - 22,
+            flower_y + 3,
+        ),
+        (
+            cx - 16,
+            flower_y - 12,
+        ),
+    )
+
+    for px, py in petals:
+        canvas.create_oval(
+            px - 9,
+            py - 9,
+            px + 9,
+            py + 9,
+            fill=plant.fruit_color,
+            outline="",
+        )
+
+    canvas.create_oval(
+        cx - 15,
+        flower_y - 15,
+        cx + 15,
+        flower_y + 15,
+        fill="#6d4a28",
+        outline="#54381e",
+        width=2,
+    )
 
 
-def draw_dead_plant(canvas, x1, y1, x2, y2):
-    cx = (x1 + x2) / 2
-    base_y = y2 - 18
+def draw_dead_plant(
+    canvas,
+    x1,
+    y1,
+    x2,
+    y2,
+):
+    cx = (
+        x1 + x2
+    ) / 2
 
-    canvas.create_line(cx, base_y, cx - 18, y2 - 56, fill="#8a6f48", width=4)
-    canvas.create_oval(cx - 34, y2 - 60, cx - 10, y2 - 42, fill="#9e8a60", outline="")
-    canvas.create_oval(cx - 10, y2 - 74, cx + 12, y2 - 56, fill="#9e8a60", outline="")
-    canvas.create_line(cx - 24, y2 - 30, cx + 10, y2 - 60, fill="#9e8a60", width=3)
-    canvas.create_line(cx - 24, y2 - 60, cx + 10, y2 - 30, fill="#9e8a60", width=3)
+    base = y2 - 14
+
+    canvas.create_line(
+        cx,
+        base,
+        cx - 15,
+        y2 - 53,
+        fill="#8d7552",
+        width=4,
+    )
+
+    canvas.create_oval(
+        cx - 30,
+        y2 - 58,
+        cx - 10,
+        y2 - 41,
+        fill="#99865f",
+        outline="",
+    )
+
+    canvas.create_oval(
+        cx - 9,
+        y2 - 70,
+        cx + 10,
+        y2 - 52,
+        fill="#99865f",
+        outline="",
+    )
+
+    canvas.create_line(
+        cx - 24,
+        y2 - 28,
+        cx + 8,
+        y2 - 58,
+        fill="#8d7552",
+        width=3,
+    )

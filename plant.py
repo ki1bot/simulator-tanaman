@@ -56,60 +56,76 @@ class Plant:
 
     @property
     def is_ready(self):
-        return (not self.is_dead) and self.growth >= self.grow_days
-
-    @property
-    def progress_percent(self):
-        if self.grow_days <= 0:
-            return 100
-        return min(100, int((self.growth / self.grow_days) * 100))
+        return not self.is_dead and self.growth >= self.grow_days
 
     @property
     def stage_name(self):
         if self.is_dead:
             return "Mati"
+
         if self.is_ready:
             return "Siap Panen"
 
-        ratio = self.growth / self.grow_days if self.grow_days else 1
+        ratio = self.growth / self.grow_days
 
         if ratio <= 0:
             return "Bibit"
+
         if ratio < 0.35:
             return "Tunas"
+
         if ratio < 0.75:
             return "Tumbuh"
+
         return "Hampir Matang"
 
     @property
     def stage_level(self):
         if self.is_dead:
             return -1
+
         if self.is_ready:
             return 3
 
-        ratio = self.growth / self.grow_days if self.grow_days else 1
+        ratio = self.growth / self.grow_days
 
         if ratio <= 0:
             return 0
+
         if ratio < 0.35:
             return 1
+
         return 2
 
     def water(self):
         if self.is_dead:
-            raise GameError(f"{self.name} sudah mati dan tidak bisa disiram.")
+            raise GameError(
+                f"{self.name} sudah mati dan tidak bisa disiram."
+            )
+
         if self.watered_today:
-            raise GameError(f"{self.name} sudah disiram hari ini.")
+            raise GameError(
+                f"{self.name} sudah disiram hari ini."
+            )
+
         self.watered_today = True
 
     def care(self):
         if self.is_dead:
-            raise GameError(f"{self.name} sudah mati dan tidak bisa dirawat.")
+            raise GameError(
+                f"{self.name} sudah mati dan tidak bisa dirawat."
+            )
+
         if self.cared_today:
-            raise GameError(f"{self.name} sudah dirawat hari ini.")
+            raise GameError(
+                f"{self.name} sudah dirawat hari ini."
+            )
+
         self.cared_today = True
-        self.health = min(self.max_health, self.health + 10)
+        self.health = min(
+            self.max_health,
+            self.health + 10,
+        )
 
     def advance_day(self, rng: Random):
         events = []
@@ -122,27 +138,68 @@ class Plant:
         if self.watered_today:
             if not self.is_ready:
                 self.growth += 1
-                events.append(f"{self.name} tumbuh 1 tahap.")
-            self.health = min(self.max_health, self.health + 2)
+                events.append(
+                    f"{self.name} tumbuh satu tahap."
+                )
+
+            self.health = min(
+                self.max_health,
+                self.health + 2,
+            )
         else:
             damage = rng.randint(10, 18)
-            self.health = max(0, self.health - damage)
-            events.append(f"{self.name} kekurangan air (-{damage} kesehatan).")
+
+            self.health = max(
+                0,
+                self.health - damage,
+            )
+
+            events.append(
+                f"{self.name} kekurangan air "
+                f"(-{damage} kesehatan)."
+            )
 
         if not self.is_dead:
-            pest_chance = 0.08 if self.cared_today else 0.18
+            pest_chance = (
+                0.08
+                if self.cared_today
+                else 0.18
+            )
+
             if rng.random() < pest_chance:
                 damage = rng.randint(7, 16)
-                self.health = max(0, self.health - damage)
-                events.append(f"Hama menyerang {self.name} (-{damage} kesehatan).")
 
-        if not self.is_dead and self.cared_today and rng.random() < 0.20:
-            heal = rng.randint(3, 7)
+                self.health = max(
+                    0,
+                    self.health - damage,
+                )
+
+                events.append(
+                    f"Hama menyerang {self.name} "
+                    f"(-{damage} kesehatan)."
+                )
+
+        if (
+            not self.is_dead
+            and self.cared_today
+            and rng.random() < 0.20
+        ):
+            recovery = rng.randint(3, 7)
             before = self.health
-            self.health = min(self.max_health, self.health + heal)
+
+            self.health = min(
+                self.max_health,
+                self.health + recovery,
+            )
+
             gained = self.health - before
+
             if gained > 0:
-                events.append(f"Perawatan berhasil (+{gained} kesehatan pada {self.name}).")
+                events.append(
+                    f"Perawatan memulihkan "
+                    f"{gained} kesehatan "
+                    f"{self.name}."
+                )
 
         if (
             not self.is_dead
@@ -152,12 +209,20 @@ class Plant:
             and rng.random() < 0.15
         ):
             self.growth += 1
-            events.append(f"{self.name} mendapat pertumbuhan bonus.")
+
+            events.append(
+                f"{self.name} mendapat "
+                f"pertumbuhan bonus."
+            )
 
         if self.health <= 0:
-            events.append(f"{self.name} mati.")
+            events.append(
+                f"{self.name} mati."
+            )
         elif self.is_ready:
-            events.append(f"{self.name} siap dipanen.")
+            events.append(
+                f"{self.name} siap dipanen."
+            )
 
         self.watered_today = False
         self.cared_today = False
@@ -175,10 +240,21 @@ class Plant:
 
     @classmethod
     def from_dict(cls, data):
+        if not isinstance(data, dict):
+            raise ValueError(
+                "Data tanaman tidak valid."
+            )
+
         return cls(
             kind=data["kind"],
             growth=data.get("growth", 0),
             health=data.get("health", 100),
-            watered_today=data.get("watered_today", False),
-            cared_today=data.get("cared_today", False),
+            watered_today=data.get(
+                "watered_today",
+                False,
+            ),
+            cared_today=data.get(
+                "cared_today",
+                False,
+            ),
         )

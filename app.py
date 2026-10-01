@@ -1,28 +1,45 @@
 import tkinter as tk
 from random import Random
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import (
+    messagebox,
+    simpledialog,
+    ttk,
+)
 
 from constants import (
     ACCENT,
+    ACCENT_HOVER,
     APP_TITLE,
     BG_MAIN,
+    BUTTON_BG,
+    BUTTON_HOVER,
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
     MAX_ENERGY,
+    PANEL_ALT,
     PANEL_BG,
     PLANT_TYPES,
     SAVE_FILE,
     SAVE_VERSION,
     SUCCESS,
+    SUCCESS_HOVER,
     TEXT_DARK,
-    TEXT_LIGHT,
+    TEXT_MUTED,
     WARNING,
+    WARNING_HOVER,
 )
-from drawing import draw_garden, pixel_to_plot
-from exceptions import GameError, SaveGameError
+from drawing import (
+    draw_garden,
+    pixel_to_plot,
+)
+from exceptions import (
+    GameError,
+    SaveGameError,
+)
 from garden import Garden
 from player import Player
 from save_manager import SaveManager
+from shop_dialog import ShopDialog
 
 
 class GardenApp(tk.Tk):
@@ -30,822 +47,1492 @@ class GardenApp(tk.Tk):
         super().__init__()
 
         self.title(APP_TITLE)
-        self.geometry("1180x760")
-        self.minsize(1120, 740)
-        self.configure(bg=BG_MAIN)
-
-        self.save_manager = SaveManager(SAVE_FILE)
-        self.rng = Random()
+        self.geometry("1120x720")
+        self.minsize(
+            1040,
+            680,
+        )
+        self.configure(
+            bg=BG_MAIN
+        )
 
         self.player = None
         self.garden = None
         self.day = 1
-
-        self.selected_tool = "plant"
         self.selected_plot = None
+        self.rng = Random()
 
-        self.display_to_key = {
-            PLANT_TYPES[key]["name"]: key
-            for key in PLANT_TYPES
-        }
-        self.key_to_display = {
-            key: PLANT_TYPES[key]["name"]
-            for key in PLANT_TYPES
-        }
+        self.save_manager = (
+            SaveManager(
+                SAVE_FILE
+            )
+        )
 
-        first_seed_display = self.key_to_display[list(PLANT_TYPES.keys())[0]]
-        self.seed_var = tk.StringVar(value=first_seed_display)
-
-        self.name_var = tk.StringVar(value="-")
-        self.day_var = tk.StringVar(value="-")
-        self.coins_var = tk.StringVar(value="-")
-        self.energy_var = tk.StringVar(value="-")
-        self.tool_var = tk.StringVar(value="Mode: Tanam")
-        self.inventory_var = tk.StringVar(value="-")
-        self.plot_info_var = tk.StringVar(value="Klik petak taman untuk berinteraksi.")
-
-        self.tool_buttons = {}
         self.log_lines = []
 
+        self.display_to_key = {
+            info["name"]: key
+            for key, info in (
+                PLANT_TYPES.items()
+            )
+        }
+
+        self.seed_var = (
+            tk.StringVar(
+                value=next(
+                    iter(
+                        self.display_to_key
+                    )
+                )
+            )
+        )
+
+        self.name_var = tk.StringVar(
+            value="-"
+        )
+
+        self.day_var = tk.StringVar(
+            value="-"
+        )
+
+        self.coins_var = tk.StringVar(
+            value="-"
+        )
+
+        self.energy_var = tk.StringVar(
+            value="-"
+        )
+
+        self.inventory_var = (
+            tk.StringVar(
+                value="-"
+            )
+        )
+
+        self.plot_info_var = (
+            tk.StringVar(
+                value=(
+                    "Klik salah satu "
+                    "petak taman."
+                )
+            )
+        )
+
         self._build_ui()
-        self._startup_flow()
 
-        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.protocol(
+            "WM_DELETE_WINDOW",
+            self.on_close,
+        )
 
-    # UI BUILD
+        self.after(
+            50,
+            self._startup_flow,
+        )
+
     def _build_ui(self):
-        title_label = tk.Label(
+        header = tk.Frame(
             self,
+            bg=BG_MAIN,
+        )
+
+        header.pack(
+            fill="x",
+            padx=18,
+            pady=(14, 8),
+        )
+
+        tk.Label(
+            header,
             text="Simulator Taman",
-            font=("Arial", 24, "bold"),
+            font=(
+                "Arial",
+                23,
+                "bold",
+            ),
             bg=BG_MAIN,
             fg=TEXT_DARK,
-        )
-        title_label.pack(pady=(18, 6))
+        ).pack()
 
-        subtitle = tk.Label(
-            self,
-            text="Game UI Python dengan taman 3×3, tanam, siram, rawat, panen, dan simpan progres.",
-            font=("Arial", 11),
+        tk.Label(
+            header,
+            text=(
+                "Tanam, rawat, dan "
+                "panen tanaman virtual "
+                "dari taman 3×3."
+            ),
+            font=(
+                "Arial",
+                10,
+            ),
             bg=BG_MAIN,
-            fg=TEXT_LIGHT,
+            fg=TEXT_MUTED,
+        ).pack(
+            pady=(3, 0)
         )
-        subtitle.pack(pady=(0, 14))
 
-        root_frame = tk.Frame(self, bg=BG_MAIN)
-        root_frame.pack(fill="both", expand=True, padx=16, pady=10)
+        body = tk.Frame(
+            self,
+            bg=BG_MAIN,
+        )
 
-        left_panel = tk.Frame(root_frame, bg=PANEL_BG, bd=0, highlightthickness=0)
-        left_panel.pack(side="left", fill="both", expand=False, padx=(0, 12))
+        body.pack(
+            fill="both",
+            expand=True,
+            padx=16,
+            pady=(0, 14),
+        )
 
-        right_panel = tk.Frame(root_frame, bg=PANEL_BG, bd=0, highlightthickness=0)
-        right_panel.pack(side="right", fill="both", expand=True)
+        left = tk.Frame(
+            body,
+            bg=PANEL_BG,
+        )
 
-        # Canvas taman
-        garden_title = tk.Label(
-            left_panel,
+        left.pack(
+            side="left",
+            fill="y",
+            padx=(0, 12),
+        )
+
+        right = tk.Frame(
+            body,
+            bg=PANEL_BG,
+        )
+
+        right.pack(
+            side="right",
+            fill="both",
+            expand=True,
+        )
+
+        tk.Label(
+            left,
             text="Taman",
-            font=("Arial", 16, "bold"),
+            font=(
+                "Arial",
+                15,
+                "bold",
+            ),
             bg=PANEL_BG,
             fg=TEXT_DARK,
+        ).pack(
+            pady=(14, 4)
         )
-        garden_title.pack(pady=(16, 8))
 
         self.canvas = tk.Canvas(
-            left_panel,
+            left,
             width=CANVAS_WIDTH,
             height=CANVAS_HEIGHT,
             bg=PANEL_BG,
             highlightthickness=0,
+            cursor="hand2",
         )
-        self.canvas.pack(padx=16, pady=(0, 16))
-        self.canvas.bind("<Button-1>", self.on_canvas_click)
 
-        # Panel kanan
-        info_frame = tk.Frame(right_panel, bg=PANEL_BG)
-        info_frame.pack(fill="x", padx=16, pady=(16, 10))
+        self.canvas.pack(
+            padx=14,
+            pady=(0, 14),
+        )
+
+        self.canvas.bind(
+            "<Button-1>",
+            self.on_canvas_click,
+        )
+
+        status = tk.Frame(
+            right,
+            bg=PANEL_BG,
+        )
+
+        status.pack(
+            fill="x",
+            padx=14,
+            pady=(14, 8),
+        )
 
         tk.Label(
-            info_frame,
+            status,
             text="Status Pemain",
-            font=("Arial", 16, "bold"),
+            font=(
+                "Arial",
+                15,
+                "bold",
+            ),
             bg=PANEL_BG,
             fg=TEXT_DARK,
-        ).pack(anchor="w")
-
-        self._stat_row(info_frame, "Nama", self.name_var)
-        self._stat_row(info_frame, "Hari", self.day_var)
-        self._stat_row(info_frame, "Koin", self.coins_var)
-        self._stat_row(info_frame, "Energi", self.energy_var)
-        self._stat_row(info_frame, "Mode", self.tool_var)
-
-        seed_frame = tk.Frame(right_panel, bg=PANEL_BG)
-        seed_frame.pack(fill="x", padx=16, pady=(0, 10))
-
-        tk.Label(
-            seed_frame,
-            text="Bibit untuk Mode Tanam",
-            font=("Arial", 13, "bold"),
-            bg=PANEL_BG,
-            fg=TEXT_DARK,
-        ).pack(anchor="w", pady=(0, 6))
-
-        self.seed_combo = ttk.Combobox(
-            seed_frame,
-            textvariable=self.seed_var,
-            state="readonly",
-            values=list(self.display_to_key.keys()),
-            font=("Arial", 11),
+        ).grid(
+            row=0,
+            column=0,
+            columnspan=4,
+            sticky="w",
+            pady=(0, 6),
         )
-        self.seed_combo.pack(fill="x")
 
-        action_frame = tk.Frame(right_panel, bg=PANEL_BG)
-        action_frame.pack(fill="x", padx=16, pady=(6, 10))
+        self._status_item(
+            status,
+            "Nama",
+            self.name_var,
+            1,
+            0,
+        )
+
+        self._status_item(
+            status,
+            "Hari",
+            self.day_var,
+            1,
+            1,
+        )
+
+        self._status_item(
+            status,
+            "Koin",
+            self.coins_var,
+            2,
+            0,
+        )
+
+        self._status_item(
+            status,
+            "Energi",
+            self.energy_var,
+            2,
+            1,
+        )
+
+        status.grid_columnconfigure(
+            0,
+            weight=1,
+        )
+
+        status.grid_columnconfigure(
+            1,
+            weight=1,
+        )
+
+        controls = tk.Frame(
+            right,
+            bg=PANEL_BG,
+        )
+
+        controls.pack(
+            fill="x",
+            padx=14,
+            pady=(2, 8),
+        )
 
         tk.Label(
-            action_frame,
-            text="Pilih Aksi",
-            font=("Arial", 13, "bold"),
+            controls,
+            text="Pilih Bibit",
+            font=(
+                "Arial",
+                11,
+                "bold",
+            ),
             bg=PANEL_BG,
             fg=TEXT_DARK,
-        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 8))
+        ).pack(
+            anchor="w"
+        )
 
-        self._make_tool_button(action_frame, "Tanam", "plant", 1, 0)
-        self._make_tool_button(action_frame, "Siram", "water", 1, 1)
-        self._make_tool_button(action_frame, "Rawat", "care", 2, 0)
-        self._make_tool_button(action_frame, "Panen", "harvest", 2, 1)
-        self._make_tool_button(action_frame, "Bersihkan", "clear", 3, 0)
+        self.seed_combo = (
+            ttk.Combobox(
+                controls,
+                textvariable=(
+                    self.seed_var
+                ),
+                state="readonly",
+                values=list(
+                    self.display_to_key.keys()
+                ),
+                font=(
+                    "Arial",
+                    10,
+                ),
+            )
+        )
 
-        command_frame = tk.Frame(action_frame, bg=PANEL_BG)
-        command_frame.grid(row=3, column=1, sticky="ew", padx=(6, 0), pady=6)
+        self.seed_combo.pack(
+            fill="x",
+            pady=(4, 8),
+        )
 
-        self.shop_button = tk.Button(
-            command_frame,
+        action_grid = tk.Frame(
+            controls,
+            bg=PANEL_BG,
+        )
+
+        action_grid.pack(
+            fill="x"
+        )
+
+        actions = (
+            (
+                "Tanam",
+                "plant",
+                0,
+                0,
+            ),
+            (
+                "Siram",
+                "water",
+                0,
+                1,
+            ),
+            (
+                "Rawat",
+                "care",
+                1,
+                0,
+            ),
+            (
+                "Panen",
+                "harvest",
+                1,
+                1,
+            ),
+            (
+                "Bersihkan",
+                "clear",
+                2,
+                0,
+            ),
+        )
+
+        for (
+            text,
+            action,
+            row,
+            col,
+        ) in actions:
+            tk.Button(
+                action_grid,
+                text=text,
+                font=(
+                    "Arial",
+                    10,
+                    "bold",
+                ),
+                bg=BUTTON_BG,
+                fg=TEXT_DARK,
+                activebackground=(
+                    BUTTON_HOVER
+                ),
+                relief="flat",
+                pady=8,
+                command=(
+                    lambda a=action:
+                    self.perform_action(a)
+                ),
+            ).grid(
+                row=row,
+                column=col,
+                sticky="ew",
+                padx=4,
+                pady=4,
+            )
+
+        tk.Button(
+            action_grid,
             text="Toko Bibit",
-            font=("Arial", 11, "bold"),
-            bg="#ead8b0",
+            font=(
+                "Arial",
+                10,
+                "bold",
+            ),
+            bg="#ddc38f",
             fg=TEXT_DARK,
-            activebackground="#ddc48a",
+            activebackground="#cfae71",
             relief="flat",
-            padx=12,
-            pady=10,
+            pady=8,
             command=self.open_shop,
+        ).grid(
+            row=2,
+            column=1,
+            sticky="ew",
+            padx=4,
+            pady=4,
         )
-        self.shop_button.pack(fill="x")
 
-        action_frame.grid_columnconfigure(0, weight=1)
-        action_frame.grid_columnconfigure(1, weight=1)
+        action_grid.grid_columnconfigure(
+            0,
+            weight=1,
+        )
 
-        selected_plot_frame = tk.Frame(right_panel, bg=PANEL_BG)
-        selected_plot_frame.pack(fill="x", padx=16, pady=(0, 10))
+        action_grid.grid_columnconfigure(
+            1,
+            weight=1,
+        )
+
+        middle = tk.Frame(
+            right,
+            bg=PANEL_BG,
+        )
+
+        middle.pack(
+            fill="x",
+            padx=14,
+            pady=(2, 8),
+        )
+
+        info_panel = tk.Frame(
+            middle,
+            bg=PANEL_ALT,
+        )
+
+        info_panel.pack(
+            side="left",
+            fill="both",
+            expand=True,
+            padx=(0, 5),
+        )
 
         tk.Label(
-            selected_plot_frame,
+            info_panel,
             text="Info Petak",
-            font=("Arial", 13, "bold"),
-            bg=PANEL_BG,
+            font=(
+                "Arial",
+                11,
+                "bold",
+            ),
+            bg=PANEL_ALT,
             fg=TEXT_DARK,
-        ).pack(anchor="w")
-
-        self.plot_info_label = tk.Label(
-            selected_plot_frame,
-            textvariable=self.plot_info_var,
-            justify="left",
+        ).pack(
             anchor="w",
-            bg="#fff5e6",
-            fg=TEXT_DARK,
-            font=("Arial", 10),
             padx=10,
-            pady=10,
-            wraplength=420,
+            pady=(8, 2),
         )
-        self.plot_info_label.pack(fill="x", pady=(6, 0))
-
-        inventory_frame = tk.Frame(right_panel, bg=PANEL_BG)
-        inventory_frame.pack(fill="x", padx=16, pady=(0, 10))
 
         tk.Label(
-            inventory_frame,
-            text="Inventaris Bibit",
-            font=("Arial", 13, "bold"),
-            bg=PANEL_BG,
-            fg=TEXT_DARK,
-        ).pack(anchor="w")
-
-        self.inventory_label = tk.Label(
-            inventory_frame,
-            textvariable=self.inventory_var,
+            info_panel,
+            textvariable=(
+                self.plot_info_var
+            ),
             justify="left",
-            anchor="w",
-            bg="#f8efe0",
-            fg=TEXT_DARK,
-            font=("Arial", 10),
+            anchor="nw",
+            wraplength=245,
+            font=(
+                "Arial",
+                9,
+            ),
+            bg=PANEL_ALT,
+            fg=TEXT_MUTED,
+        ).pack(
+            fill="both",
+            expand=True,
             padx=10,
-            pady=10,
+            pady=(0, 8),
         )
-        self.inventory_label.pack(fill="x", pady=(6, 0))
 
-        log_frame = tk.Frame(right_panel, bg=PANEL_BG)
-        log_frame.pack(fill="both", expand=True, padx=16, pady=(0, 10))
+        inventory_panel = (
+            tk.Frame(
+                middle,
+                bg=PANEL_ALT,
+            )
+        )
+
+        inventory_panel.pack(
+            side="left",
+            fill="both",
+            expand=True,
+            padx=(5, 0),
+        )
+
+        tk.Label(
+            inventory_panel,
+            text="Inventaris Bibit",
+            font=(
+                "Arial",
+                11,
+                "bold",
+            ),
+            bg=PANEL_ALT,
+            fg=TEXT_DARK,
+        ).pack(
+            anchor="w",
+            padx=10,
+            pady=(8, 2),
+        )
+
+        tk.Label(
+            inventory_panel,
+            textvariable=(
+                self.inventory_var
+            ),
+            justify="left",
+            anchor="nw",
+            font=(
+                "Arial",
+                9,
+            ),
+            bg=PANEL_ALT,
+            fg=TEXT_MUTED,
+        ).pack(
+            fill="both",
+            expand=True,
+            padx=10,
+            pady=(0, 8),
+        )
+
+        log_frame = tk.Frame(
+            right,
+            bg=PANEL_BG,
+        )
+
+        log_frame.pack(
+            fill="both",
+            expand=True,
+            padx=14,
+            pady=(0, 8),
+        )
 
         tk.Label(
             log_frame,
-            text="Log Kegiatan",
-            font=("Arial", 13, "bold"),
+            text="Kegiatan",
+            font=(
+                "Arial",
+                11,
+                "bold",
+            ),
             bg=PANEL_BG,
             fg=TEXT_DARK,
-        ).pack(anchor="w")
+        ).pack(
+            anchor="w"
+        )
 
         self.log_text = tk.Text(
             log_frame,
-            height=12,
+            height=7,
             wrap="word",
-            font=("Consolas", 10),
-            bg="#fbf6eb",
+            font=(
+                "Consolas",
+                9,
+            ),
+            bg="#fbf6ec",
             fg=TEXT_DARK,
             relief="flat",
-            padx=10,
-            pady=10,
+            padx=8,
+            pady=8,
         )
-        self.log_text.pack(fill="both", expand=True, pady=(6, 0))
-        self.log_text.config(state="disabled")
 
-        bottom_buttons = tk.Frame(right_panel, bg=PANEL_BG)
-        bottom_buttons.pack(fill="x", padx=16, pady=(0, 16))
+        self.log_text.pack(
+            fill="both",
+            expand=True,
+            pady=(4, 0),
+        )
 
-        self.end_day_button = tk.Button(
-            bottom_buttons,
+        self.log_text.config(
+            state="disabled"
+        )
+
+        bottom = tk.Frame(
+            right,
+            bg=PANEL_BG,
+        )
+
+        bottom.pack(
+            fill="x",
+            padx=14,
+            pady=(0, 14),
+        )
+
+        tk.Button(
+            bottom,
             text="Hari Berikutnya",
-            font=("Arial", 11, "bold"),
+            font=(
+                "Arial",
+                10,
+                "bold",
+            ),
             bg=SUCCESS,
             fg="white",
-            activebackground="#5e975e",
+            activebackground=(
+                SUCCESS_HOVER
+            ),
             relief="flat",
-            padx=12,
-            pady=10,
+            pady=8,
             command=self.end_day,
+        ).pack(
+            side="left",
+            fill="x",
+            expand=True,
+            padx=(0, 4),
         )
-        self.end_day_button.pack(side="left", fill="x", expand=True, padx=(0, 6))
 
-        self.save_button = tk.Button(
-            bottom_buttons,
+        tk.Button(
+            bottom,
             text="Simpan",
-            font=("Arial", 11, "bold"),
+            font=(
+                "Arial",
+                10,
+                "bold",
+            ),
             bg=ACCENT,
             fg="white",
-            activebackground="#734b27",
+            activebackground=(
+                ACCENT_HOVER
+            ),
             relief="flat",
-            padx=12,
-            pady=10,
+            pady=8,
             command=self.save_game,
+        ).pack(
+            side="left",
+            fill="x",
+            expand=True,
+            padx=4,
         )
-        self.save_button.pack(side="left", fill="x", expand=True, padx=6)
 
-        self.load_button = tk.Button(
-            bottom_buttons,
+        tk.Button(
+            bottom,
             text="Muat",
-            font=("Arial", 11, "bold"),
-            bg="#90755d",
+            font=(
+                "Arial",
+                10,
+                "bold",
+            ),
+            bg="#8b7664",
             fg="white",
-            activebackground="#7b624c",
+            activebackground="#756252",
             relief="flat",
-            padx=12,
-            pady=10,
+            pady=8,
             command=self.load_game,
+        ).pack(
+            side="left",
+            fill="x",
+            expand=True,
+            padx=4,
         )
-        self.load_button.pack(side="left", fill="x", expand=True, padx=6)
 
-        self.new_button = tk.Button(
-            bottom_buttons,
+        tk.Button(
+            bottom,
             text="Game Baru",
-            font=("Arial", 11, "bold"),
+            font=(
+                "Arial",
+                10,
+                "bold",
+            ),
             bg=WARNING,
             fg="white",
-            activebackground="#b45d42",
+            activebackground=(
+                WARNING_HOVER
+            ),
             relief="flat",
-            padx=12,
-            pady=10,
-            command=self.start_new_game,
+            pady=8,
+            command=(
+                self.start_new_game
+            ),
+        ).pack(
+            side="left",
+            fill="x",
+            expand=True,
+            padx=(4, 0),
         )
-        self.new_button.pack(side="left", fill="x", expand=True, padx=(6, 0))
 
-    def _stat_row(self, parent, label, variable):
-        frame = tk.Frame(parent, bg=PANEL_BG)
-        frame.pack(fill="x", pady=2)
-
-        tk.Label(
-            frame,
-            text=f"{label}:",
-            width=10,
-            anchor="w",
-            font=("Arial", 11, "bold"),
-            bg=PANEL_BG,
-            fg=TEXT_DARK,
-        ).pack(side="left")
-
-        tk.Label(
-            frame,
-            textvariable=variable,
-            anchor="w",
-            font=("Arial", 11),
-            bg=PANEL_BG,
-            fg=TEXT_LIGHT,
-        ).pack(side="left")
-
-    def _make_tool_button(self, parent, text, tool_key, row, col):
-        button = tk.Button(
+    def _status_item(
+        self,
+        parent,
+        label,
+        variable,
+        row,
+        column,
+    ):
+        box = tk.Frame(
             parent,
-            text=text,
-            font=("Arial", 11, "bold"),
-            relief="flat",
-            padx=12,
-            pady=10,
-            command=lambda key=tool_key: self.set_tool(key),
+            bg=PANEL_ALT,
         )
-        button.grid(row=row, column=col, sticky="ew", padx=6, pady=6)
-        self.tool_buttons[tool_key] = button
 
-    # FLOW
+        box.grid(
+            row=row,
+            column=column,
+            sticky="ew",
+            padx=4,
+            pady=3,
+        )
+
+        tk.Label(
+            box,
+            text=f"{label}:",
+            font=(
+                "Arial",
+                9,
+                "bold",
+            ),
+            bg=PANEL_ALT,
+            fg=TEXT_DARK,
+        ).pack(
+            side="left",
+            padx=(8, 4),
+            pady=6,
+        )
+
+        tk.Label(
+            box,
+            textvariable=variable,
+            font=(
+                "Arial",
+                9,
+            ),
+            bg=PANEL_ALT,
+            fg=TEXT_MUTED,
+        ).pack(
+            side="left",
+            pady=6,
+        )
+
     def _startup_flow(self):
         if self.save_manager.exists():
-            load = messagebox.askyesno(
-                "Muat Permainan",
-                "Ditemukan save game.\nApakah Anda ingin melanjutkan permainan sebelumnya?",
-                parent=self,
+            use_save = (
+                messagebox.askyesno(
+                    "Muat Permainan",
+                    (
+                        "Ditemukan save game. "
+                        "Lanjutkan permainan "
+                        "sebelumnya?"
+                    ),
+                    parent=self,
+                )
             )
-            if load:
-                try:
-                    self.load_game(show_message=False)
-                    self.log("Save game berhasil dimuat.")
-                    return
-                except SaveGameError as exc:
-                    messagebox.showerror("Gagal Memuat", str(exc), parent=self)
 
-        self.start_new_game(show_message=False)
+            if (
+                use_save
+                and self._load_state(
+                    show_message=False
+                )
+            ):
+                self.log(
+                    "Save game berhasil "
+                    "dimuat."
+                )
+                return
 
-    def start_new_game(self, show_message=True):
+        self.start_new_game(
+            show_message=False,
+            ask_confirmation=False,
+        )
+
+    def start_new_game(
+        self,
+        show_message=True,
+        ask_confirmation=True,
+    ):
+        if (
+            ask_confirmation
+            and self.player is not None
+        ):
+            proceed = (
+                messagebox.askyesno(
+                    "Game Baru",
+                    (
+                        "Memulai game baru "
+                        "akan mengganti progres "
+                        "yang sedang aktif. "
+                        "Lanjutkan?"
+                    ),
+                    parent=self,
+                )
+            )
+
+            if not proceed:
+                return
+
         name = simpledialog.askstring(
             "Nama Pemain",
             "Masukkan nama pemain:",
             parent=self,
         )
 
-        if name is None or not name.strip():
+        if name is None:
+            if self.player is not None:
+                return
+
             name = "Pemain"
 
-        self.player = Player(name=name.strip())
+        name = (
+            name.strip()
+            or "Pemain"
+        )
+
+        self.player = Player(
+            name=name
+        )
+
         self.garden = Garden()
         self.day = 1
         self.selected_plot = None
-        self.set_tool("plant", silent=True)
+
         self.clear_log()
-        self.log(f"Permainan baru dimulai. Selamat datang, {self.player.name}!")
+
+        self.log(
+            f"Permainan baru dimulai. "
+            f"Selamat datang, "
+            f"{self.player.name}."
+        )
+
         self.refresh_ui()
 
         if show_message:
             messagebox.showinfo(
                 "Game Baru",
-                f"Permainan baru dimulai untuk {self.player.name}.",
+                (
+                    "Permainan baru "
+                    "berhasil dimulai."
+                ),
                 parent=self,
             )
 
-    def save_game(self):
-        self.ensure_game_ready()
+    def on_canvas_click(
+        self,
+        event,
+    ):
+        if not self._game_ready():
+            return
 
+        position = pixel_to_plot(
+            event.x,
+            event.y,
+        )
+
+        if position is None:
+            return
+
+        self.selected_plot = position
+        self.refresh_ui()
+
+    def perform_action(
+        self,
+        action,
+    ):
+        if not self._game_ready():
+            return
+
+        if self.selected_plot is None:
+            messagebox.showwarning(
+                "Pilih Petak",
+                (
+                    "Pilih salah satu "
+                    "petak taman "
+                    "terlebih dahulu."
+                ),
+                parent=self,
+            )
+            return
+
+        try:
+            if action == "plant":
+                self._plant_selected()
+
+            elif action == "water":
+                self._water_selected()
+
+            elif action == "care":
+                self._care_selected()
+
+            elif action == "harvest":
+                self._harvest_selected()
+
+            elif action == "clear":
+                self._clear_selected()
+
+        except (
+            GameError,
+            ValueError,
+            KeyError,
+        ) as exc:
+            messagebox.showwarning(
+                "Aksi Gagal",
+                str(exc),
+                parent=self,
+            )
+
+            self.log(
+                f"Gagal: {exc}"
+            )
+
+        self.refresh_ui()
+
+    def _plant_selected(self):
+        self.player.require_energy()
+
+        kind = self.display_to_key[
+            self.seed_var.get()
+        ]
+
+        plot = self.garden.get_plot(
+            self.selected_plot
+        )
+
+        if not plot.is_empty:
+            raise GameError(
+                f"Petak "
+                f"{self.selected_plot} "
+                f"sudah terisi."
+            )
+
+        self.player.use_seed(
+            kind
+        )
+
+        try:
+            plant = (
+                self.garden.plant_seed(
+                    self.selected_plot,
+                    kind,
+                )
+            )
+
+        except Exception:
+            self.player.seeds[kind] = (
+                self.player.seed_count(
+                    kind
+                )
+                + 1
+            )
+            raise
+
+        self.player.consume_energy()
+
+        self.log(
+            f"{plant.name} ditanam "
+            f"di petak "
+            f"{self.selected_plot}."
+        )
+
+    def _water_selected(self):
+        self.player.require_energy()
+
+        plant = (
+            self.garden.water_plot(
+                self.selected_plot
+            )
+        )
+
+        self.player.consume_energy()
+
+        self.log(
+            f"{plant.name} di petak "
+            f"{self.selected_plot} "
+            f"disiram."
+        )
+
+    def _care_selected(self):
+        self.player.require_energy()
+
+        plant = (
+            self.garden.care_plot(
+                self.selected_plot
+            )
+        )
+
+        self.player.consume_energy()
+
+        self.log(
+            f"{plant.name} di petak "
+            f"{self.selected_plot} "
+            f"dirawat."
+        )
+
+    def _harvest_selected(self):
+        self.player.require_energy()
+
+        plant = (
+            self.garden.harvest_plot(
+                self.selected_plot
+            )
+        )
+
+        self.player.consume_energy()
+
+        self.player.receive_harvest(
+            plant.harvest_value
+        )
+
+        self.log(
+            f"{plant.name} dipanen "
+            f"dari petak "
+            f"{self.selected_plot}. "
+            f"+{plant.harvest_value} "
+            f"koin."
+        )
+
+    def _clear_selected(self):
+        self.player.require_energy()
+
+        name = (
+            self.garden.clear_dead_plot(
+                self.selected_plot
+            )
+        )
+
+        self.player.consume_energy()
+
+        self.log(
+            f"Tanaman mati {name} "
+            f"dibersihkan dari petak "
+            f"{self.selected_plot}."
+        )
+
+    def end_day(self):
+        if not self._game_ready():
+            return
+
+        proceed = (
+            messagebox.askyesno(
+                "Hari Berikutnya",
+                (
+                    f"Akhiri hari "
+                    f"ke-{self.day} dan "
+                    f"lanjut ke hari "
+                    f"berikutnya?"
+                ),
+                parent=self,
+            )
+        )
+
+        if not proceed:
+            return
+
+        events = (
+            self.garden.advance_day(
+                self.rng
+            )
+        )
+
+        self.day += 1
+
+        self.player.reset_energy()
+
+        if self.rng.random() < 0.15:
+            kind = self.rng.choice(
+                list(
+                    PLANT_TYPES.keys()
+                )
+            )
+
+            self.player.seeds[kind] = (
+                self.player.seed_count(
+                    kind
+                )
+                + 1
+            )
+
+            events.append(
+                f"Bonus harian: "
+                f"mendapat 1 bibit "
+                f"{PLANT_TYPES[kind]['name']}."
+            )
+
+        self.log(
+            f"Memasuki hari "
+            f"ke-{self.day}. "
+            f"Energi dipulihkan "
+            f"menjadi {MAX_ENERGY}."
+        )
+
+        if events:
+            for event in events:
+                self.log(event)
+        else:
+            self.log(
+                "Tidak ada peristiwa "
+                "khusus hari ini."
+            )
+
+        self.refresh_ui()
+
+    def open_shop(self):
+        if not self._game_ready():
+            return
+
+        ShopDialog(
+            self,
+            self.player,
+            self._after_purchase,
+        )
+
+    def _after_purchase(
+        self,
+        kind,
+        quantity,
+    ):
+        self.log(
+            f"Membeli {quantity} "
+            f"bibit "
+            f"{PLANT_TYPES[kind]['name']}."
+        )
+
+        self.refresh_ui()
+
+    def save_game(self):
+        if not self._game_ready():
+            return False
+
+        return self._save_state(
+            show_message=True
+        )
+
+    def _save_state(
+        self,
+        show_message=False,
+    ):
         data = {
             "version": SAVE_VERSION,
             "day": self.day,
-            "player": self.player.to_dict(),
-            "garden": self.garden.to_dict(),
+            "player": (
+                self.player.to_dict()
+            ),
+            "garden": (
+                self.garden.to_dict()
+            ),
         }
 
-        self.save_manager.save(data)
-        self.log("Permainan berhasil disimpan.")
-        messagebox.showinfo("Simpan", "Permainan berhasil disimpan.", parent=self)
-
-    def load_game(self, show_message=True):
-        data = self.save_manager.load()
-
-        version = int(data.get("version", 0))
-        if version != SAVE_VERSION:
-            raise SaveGameError(
-                f"Versi save game tidak didukung ({version})."
+        try:
+            self.save_manager.save(
+                data
             )
 
-        self.player = Player.from_dict(data["player"])
-        self.garden = Garden.from_dict(data["garden"])
-        self.day = max(1, int(data.get("day", 1)))
-        self.selected_plot = None
-        self.set_tool("plant", silent=True)
-        self.refresh_ui()
+        except SaveGameError as exc:
+            messagebox.showerror(
+                "Gagal Menyimpan",
+                str(exc),
+                parent=self,
+            )
+
+            return False
+
+        self.log(
+            "Permainan berhasil "
+            "disimpan."
+        )
 
         if show_message:
-            self.log("Permainan berhasil dimuat.")
-            messagebox.showinfo("Muat", "Permainan berhasil dimuat.", parent=self)
+            messagebox.showinfo(
+                "Simpan",
+                (
+                    "Permainan berhasil "
+                    "disimpan."
+                ),
+                parent=self,
+            )
+
+        return True
+
+    def load_game(self):
+        if self.player is not None:
+            proceed = (
+                messagebox.askyesno(
+                    "Muat Permainan",
+                    (
+                        "Progres yang sedang "
+                        "aktif akan diganti "
+                        "dengan save game. "
+                        "Lanjutkan?"
+                    ),
+                    parent=self,
+                )
+            )
+
+            if not proceed:
+                return
+
+        self._load_state(
+            show_message=True
+        )
+
+    def _load_state(
+        self,
+        show_message=False,
+    ):
+        try:
+            data = (
+                self.save_manager.load()
+            )
+
+            version = int(
+                data.get(
+                    "version",
+                    0,
+                )
+            )
+
+            if version != SAVE_VERSION:
+                raise SaveGameError(
+                    f"Versi save game "
+                    f"{version} tidak "
+                    f"didukung. Versi "
+                    f"aplikasi saat ini "
+                    f"adalah "
+                    f"{SAVE_VERSION}."
+                )
+
+            player = (
+                Player.from_dict(
+                    data["player"]
+                )
+            )
+
+            garden = (
+                Garden.from_dict(
+                    data["garden"]
+                )
+            )
+
+            day = max(
+                1,
+                int(
+                    data.get(
+                        "day",
+                        1,
+                    )
+                ),
+            )
+
+        except SaveGameError as exc:
+            messagebox.showerror(
+                "Gagal Memuat",
+                str(exc),
+                parent=self,
+            )
+
+            return False
+
+        except (
+            KeyError,
+            TypeError,
+            ValueError,
+        ) as exc:
+            messagebox.showerror(
+                "Gagal Memuat",
+                (
+                    "Data save game "
+                    "rusak atau tidak "
+                    f"lengkap: {exc}"
+                ),
+                parent=self,
+            )
+
+            return False
+
+        self.player = player
+        self.garden = garden
+        self.day = day
+        self.selected_plot = None
+
+        self.refresh_ui()
+
+        self.log(
+            "Permainan berhasil "
+            "dimuat."
+        )
+
+        if show_message:
+            messagebox.showinfo(
+                "Muat",
+                (
+                    "Permainan berhasil "
+                    "dimuat."
+                ),
+                parent=self,
+            )
+
+        return True
+
+    def refresh_ui(self):
+        if not self._game_ready(
+            show_error=False
+        ):
+            return
+
+        self.name_var.set(
+            self.player.name
+        )
+
+        self.day_var.set(
+            str(self.day)
+        )
+
+        self.coins_var.set(
+            str(self.player.coins)
+        )
+
+        self.energy_var.set(
+            f"{self.player.energy}/"
+            f"{MAX_ENERGY}"
+        )
+
+        self.inventory_var.set(
+            self._inventory_text()
+        )
+
+        self.plot_info_var.set(
+            self._plot_info_text()
+        )
+
+        draw_garden(
+            self.canvas,
+            self.garden,
+            self.selected_plot,
+        )
+
+    def _inventory_text(self):
+        return "\n".join(
+            (
+                f"{info['name']}: "
+                f"{self.player.seed_count(kind)}"
+            )
+            for kind, info in (
+                PLANT_TYPES.items()
+            )
+        )
+
+    def _plot_info_text(self):
+        if self.selected_plot is None:
+            return (
+                "Klik salah satu petak "
+                "untuk memilihnya."
+            )
+
+        plot = self.garden.get_plot(
+            self.selected_plot
+        )
+
+        if plot.is_empty:
+            return (
+                f"Petak "
+                f"{plot.position}\n"
+                f"Status: Kosong\n"
+                f"Siap ditanami."
+            )
+
+        plant = plot.plant
+
+        watered = (
+            "Ya"
+            if plant.watered_today
+            else "Belum"
+        )
+
+        cared = (
+            "Ya"
+            if plant.cared_today
+            else "Belum"
+        )
+
+        return (
+            f"Petak "
+            f"{plot.position}\n"
+            f"Tanaman: "
+            f"{plant.name}\n"
+            f"Tahap: "
+            f"{plant.stage_name}\n"
+            f"Pertumbuhan: "
+            f"{plant.growth}/"
+            f"{plant.grow_days}\n"
+            f"Kesehatan: "
+            f"{plant.health}/"
+            f"{plant.max_health}\n"
+            f"Disiram: "
+            f"{watered}\n"
+            f"Dirawat: "
+            f"{cared}"
+        )
+
+    def log(self, text):
+        self.log_lines.append(
+            text
+        )
+
+        self.log_lines = (
+            self.log_lines[-80:]
+        )
+
+        self.log_text.config(
+            state="normal"
+        )
+
+        self.log_text.delete(
+            "1.0",
+            "end",
+        )
+
+        self.log_text.insert(
+            "end",
+            "\n".join(
+                self.log_lines
+            ),
+        )
+
+        self.log_text.see(
+            "end"
+        )
+
+        self.log_text.config(
+            state="disabled"
+        )
+
+    def clear_log(self):
+        self.log_lines = []
+
+        self.log_text.config(
+            state="normal"
+        )
+
+        self.log_text.delete(
+            "1.0",
+            "end",
+        )
+
+        self.log_text.config(
+            state="disabled"
+        )
+
+    def _game_ready(
+        self,
+        show_error=True,
+    ):
+        ready = (
+            self.player is not None
+            and self.garden is not None
+        )
+
+        if (
+            not ready
+            and show_error
+        ):
+            messagebox.showwarning(
+                "Game Belum Siap",
+                (
+                    "Mulai game baru "
+                    "terlebih dahulu."
+                ),
+                parent=self,
+            )
+
+        return ready
 
     def on_close(self):
         if self.player is None:
             self.destroy()
             return
 
-        save = messagebox.askyesnocancel(
-            "Keluar",
-            "Simpan permainan sebelum keluar?",
-            parent=self,
+        choice = (
+            messagebox.askyesnocancel(
+                "Keluar",
+                (
+                    "Simpan permainan "
+                    "sebelum keluar?"
+                ),
+                parent=self,
+            )
         )
 
-        if save is None:
+        if choice is None:
             return
 
-        if save:
-            try:
-                self.save_game()
-            except SaveGameError as exc:
-                messagebox.showerror("Gagal Menyimpan", str(exc), parent=self)
-                return
+        if (
+            choice
+            and not self._save_state(
+                show_message=False
+            )
+        ):
+            return
 
         self.destroy()
-
-    # STATE + UI UPDATE
-    def refresh_ui(self):
-        self.ensure_game_ready()
-
-        self.name_var.set(self.player.name)
-        self.day_var.set(str(self.day))
-        self.coins_var.set(str(self.player.coins))
-        self.energy_var.set(f"{self.player.energy}/{MAX_ENERGY}")
-        self.tool_var.set(f"Mode: {self.tool_display_name(self.selected_tool)}")
-        self.inventory_var.set(self.build_inventory_text())
-        self.plot_info_var.set(self.build_plot_info_text())
-
-        self.refresh_tool_buttons()
-        draw_garden(self.canvas, self.garden, self.selected_plot)
-
-    def build_inventory_text(self):
-        lines = []
-
-        for key, info in PLANT_TYPES.items():
-            lines.append(
-                f"• {info['name']}: {self.player.seed_count(key)} bibit"
-            )
-
-        return "\n".join(lines)
-
-    def build_plot_info_text(self):
-        if self.selected_plot is None:
-            return "Klik salah satu petak untuk melihat detail dan menjalankan aksi sesuai mode yang dipilih."
-
-        plot = self.garden.get_plot(self.selected_plot)
-
-        if plot.is_empty:
-            return (
-                f"Petak {plot.position}\n"
-                f"Status: Kosong\n"
-                f"Gunakan mode Tanam untuk menanam bibit."
-            )
-
-        plant = plot.plant
-        watered = "Ya" if plant.watered_today else "Belum"
-        cared = "Ya" if plant.cared_today else "Belum"
-
-        return (
-            f"Petak {plot.position}\n"
-            f"Tanaman: {plant.name}\n"
-            f"Tahap: {plant.stage_name}\n"
-            f"Pertumbuhan: {plant.growth}/{plant.grow_days}\n"
-            f"Kesehatan: {plant.health}/{plant.max_health}\n"
-            f"Disiram hari ini: {watered}\n"
-            f"Dirawat hari ini: {cared}\n"
-            f"Nilai panen: {plant.harvest_value} koin"
-        )
-
-    def refresh_tool_buttons(self):
-        for key, button in self.tool_buttons.items():
-            if key == self.selected_tool:
-                button.config(
-                    bg="#e3a44b",
-                    fg="white",
-                    activebackground="#d29138",
-                )
-            else:
-                button.config(
-                    bg="#efe4d1",
-                    fg=TEXT_DARK,
-                    activebackground="#e2d1b5",
-                )
-
-    def set_tool(self, tool_key, silent=False):
-        self.selected_tool = tool_key
-        self.tool_var.set(f"Mode: {self.tool_display_name(tool_key)}")
-        self.refresh_tool_buttons()
-        if not silent:
-            self.log(f"Mode diubah ke: {self.tool_display_name(tool_key)}")
-
-    def tool_display_name(self, tool_key):
-        names = {
-            "plant": "Tanam",
-            "water": "Siram",
-            "care": "Rawat",
-            "harvest": "Panen",
-            "clear": "Bersihkan",
-        }
-        return names.get(tool_key, tool_key)
-
-    # CANVAS / ACTIONS
-    def on_canvas_click(self, event):
-        self.ensure_game_ready()
-
-        plot_number = pixel_to_plot(event.x, event.y)
-        if plot_number is None:
-            return
-
-        self.selected_plot = plot_number
-
-        try:
-            self.apply_current_tool(plot_number)
-        except GameError as exc:
-            self.refresh_ui()
-            self.log(f"Gagal: {exc}")
-            messagebox.showwarning("Aksi Gagal", str(exc), parent=self)
-            return
-
-        self.refresh_ui()
-
-    def apply_current_tool(self, plot_number):
-        if self.selected_tool == "plant":
-            self.action_plant(plot_number)
-        elif self.selected_tool == "water":
-            self.action_water(plot_number)
-        elif self.selected_tool == "care":
-            self.action_care(plot_number)
-        elif self.selected_tool == "harvest":
-            self.action_harvest(plot_number)
-        elif self.selected_tool == "clear":
-            self.action_clear(plot_number)
-
-    def action_plant(self, plot_number):
-        self.player.require_energy()
-
-        display_name = self.seed_var.get()
-        kind = self.display_to_key[display_name]
-
-        if not self.player.has_seed(kind):
-            raise GameError(f"Bibit {PLANT_TYPES[kind]['name']} habis.")
-
-        plant = self.garden.plant_seed(plot_number, kind)
-        self.player.use_seed(kind)
-        self.player.consume_energy()
-
-        self.log(
-            f"Menanam {plant.name} di petak {plot_number}. "
-            f"Energi tersisa: {self.player.energy}."
-        )
-
-    def action_water(self, plot_number):
-        self.player.require_energy()
-
-        plant = self.garden.water_plot(plot_number)
-        self.player.consume_energy()
-
-        self.log(
-            f"Menyiram {plant.name} di petak {plot_number}. "
-            f"Energi tersisa: {self.player.energy}."
-        )
-
-    def action_care(self, plot_number):
-        self.player.require_energy()
-
-        plant = self.garden.care_plot(plot_number)
-        self.player.consume_energy()
-
-        self.log(
-            f"Merawat {plant.name} di petak {plot_number}. "
-            f"Kesehatan sekarang: {plant.health}/{plant.max_health}. "
-            f"Energi tersisa: {self.player.energy}."
-        )
-
-    def action_harvest(self, plot_number):
-        self.player.require_energy()
-
-        plant = self.garden.harvest_plot(plot_number)
-        self.player.consume_energy()
-        self.player.receive_harvest(plant.harvest_value)
-
-        self.log(
-            f"Memanen {plant.name} dari petak {plot_number}. "
-            f"Mendapat {plant.harvest_value} koin. "
-            f"Koin sekarang: {self.player.coins}."
-        )
-
-    def action_clear(self, plot_number):
-        self.player.require_energy()
-
-        dead_name = self.garden.clear_dead_plot(plot_number)
-        self.player.consume_energy()
-
-        self.log(
-            f"Membersihkan tanaman mati ({dead_name}) dari petak {plot_number}. "
-            f"Energi tersisa: {self.player.energy}."
-        )
-
-    def end_day(self):
-        self.ensure_game_ready()
-
-        proceed = messagebox.askyesno(
-            "Hari Berikutnya",
-            f"Akhiri hari ke-{self.day} dan lanjut ke hari berikutnya?",
-            parent=self,
-        )
-
-        if not proceed:
-            return
-
-        events = self.garden.advance_day(self.rng)
-        self.day += 1
-        self.player.reset_energy()
-
-        if self.rng.random() < 0.15:
-            random_kind = self.rng.choice(list(PLANT_TYPES.keys()))
-            self.player.seeds[random_kind] = self.player.seed_count(random_kind) + 1
-            events.append(
-                f"Bonus harian: mendapat 1 bibit {PLANT_TYPES[random_kind]['name']}."
-            )
-
-        self.log(f"Masuk ke hari ke-{self.day}. Energi dipulihkan menjadi {self.player.energy}/{MAX_ENERGY}.")
-
-        if events:
-            for item in events:
-                self.log(item)
-        else:
-            self.log("Tidak ada peristiwa khusus hari ini.")
-
-        self.refresh_ui()
-
-    # SHOP
-    def open_shop(self):
-        self.ensure_game_ready()
-
-        shop = tk.Toplevel(self)
-        shop.title("Toko Bibit")
-        shop.configure(bg=PANEL_BG)
-        shop.resizable(False, False)
-        shop.transient(self)
-        shop.grab_set()
-
-        coins_var = tk.StringVar(value=f"Koin Anda: {self.player.coins}")
-
-        tk.Label(
-            shop,
-            text="Toko Bibit",
-            font=("Arial", 16, "bold"),
-            bg=PANEL_BG,
-            fg=TEXT_DARK,
-        ).pack(anchor="w", padx=16, pady=(16, 6))
-
-        tk.Label(
-            shop,
-            textvariable=coins_var,
-            font=("Arial", 11, "bold"),
-            bg=PANEL_BG,
-            fg=TEXT_LIGHT,
-        ).pack(anchor="w", padx=16, pady=(0, 10))
-
-        content = tk.Frame(shop, bg=PANEL_BG)
-        content.pack(fill="both", expand=True, padx=16, pady=(0, 10))
-
-        tk.Label(
-            content,
-            text="Jenis Bibit",
-            font=("Arial", 11, "bold"),
-            bg=PANEL_BG,
-            fg=TEXT_DARK,
-            width=18,
-            anchor="w",
-        ).grid(row=0, column=0, sticky="w", padx=(0, 6), pady=4)
-
-        tk.Label(
-            content,
-            text="Info",
-            font=("Arial", 11, "bold"),
-            bg=PANEL_BG,
-            fg=TEXT_DARK,
-            width=32,
-            anchor="w",
-        ).grid(row=0, column=1, sticky="w", padx=6, pady=4)
-
-        tk.Label(
-            content,
-            text="Aksi",
-            font=("Arial", 11, "bold"),
-            bg=PANEL_BG,
-            fg=TEXT_DARK,
-            width=14,
-            anchor="w",
-        ).grid(row=0, column=2, sticky="w", padx=6, pady=4)
-
-        row_index = 1
-
-        for key, info in PLANT_TYPES.items():
-            tk.Label(
-                content,
-                text=info["name"],
-                bg="#f9f0e1",
-                fg=TEXT_DARK,
-                font=("Arial", 10, "bold"),
-                padx=8,
-                pady=8,
-                anchor="w",
-                width=16,
-            ).grid(row=row_index, column=0, sticky="ew", padx=(0, 6), pady=4)
-
-            info_text = (
-                f"Harga: {info['seed_price']} | "
-                f"Panen: {info['harvest_value']} | "
-                f"Tumbuh: {info['grow_days']} hari"
-            )
-
-            tk.Label(
-                content,
-                text=info_text,
-                bg="#fdf8ef",
-                fg=TEXT_LIGHT,
-                font=("Arial", 10),
-                padx=8,
-                pady=8,
-                anchor="w",
-                width=34,
-            ).grid(row=row_index, column=1, sticky="ew", padx=6, pady=4)
-
-            action_wrap = tk.Frame(content, bg=PANEL_BG)
-            action_wrap.grid(row=row_index, column=2, sticky="ew", padx=(6, 0), pady=4)
-
-            buy1 = tk.Button(
-                action_wrap,
-                text="Beli 1",
-                font=("Arial", 9, "bold"),
-                bg="#ead8b0",
-                fg=TEXT_DARK,
-                relief="flat",
-                command=lambda k=key: self._buy_seed_from_shop(k, 1, coins_var),
-            )
-            buy1.pack(side="left", padx=(0, 4))
-
-            buy3 = tk.Button(
-                action_wrap,
-                text="Beli 3",
-                font=("Arial", 9, "bold"),
-                bg="#e0c487",
-                fg=TEXT_DARK,
-                relief="flat",
-                command=lambda k=key: self._buy_seed_from_shop(k, 3, coins_var),
-            )
-            buy3.pack(side="left")
-
-            row_index += 1
-
-        close_button = tk.Button(
-            shop,
-            text="Tutup",
-            font=("Arial", 10, "bold"),
-            bg=ACCENT,
-            fg="white",
-            activebackground="#734b27",
-            relief="flat",
-            padx=14,
-            pady=8,
-            command=shop.destroy,
-        )
-        close_button.pack(anchor="e", padx=16, pady=(0, 16))
-
-    def _buy_seed_from_shop(self, kind, quantity, coins_var):
-        self.player.buy_seed(kind, quantity)
-        coins_var.set(f"Koin Anda: {self.player.coins}")
-        self.log(
-            f"Membeli {quantity} bibit {PLANT_TYPES[kind]['name']}. "
-            f"Koin tersisa: {self.player.coins}."
-        )
-        self.refresh_ui()
-
-    # LOG
-    def log(self, text):
-        self.log_lines.append(text)
-
-        if len(self.log_lines) > 80:
-            self.log_lines = self.log_lines[-80:]
-
-        self.log_text.config(state="normal")
-        self.log_text.delete("1.0", "end")
-        self.log_text.insert("end", "\n".join(self.log_lines))
-        self.log_text.see("end")
-        self.log_text.config(state="disabled")
-
-    def clear_log(self):
-        self.log_lines = []
-        self.log_text.config(state="normal")
-        self.log_text.delete("1.0", "end")
-        self.log_text.config(state="disabled")
-
-    # UTILS
-    def ensure_game_ready(self):
-        if self.player is None or self.garden is None:
-            raise RuntimeError("Game belum diinisialisasi.")

@@ -15,13 +15,29 @@ class Plot:
     def to_dict(self):
         return {
             "position": self.position,
-            "plant": None if self.plant is None else self.plant.to_dict(),
+            "plant": (
+                None
+                if self.plant is None
+                else self.plant.to_dict()
+            ),
         }
 
     @classmethod
     def from_dict(cls, data):
+        if not isinstance(data, dict):
+            raise ValueError(
+                "Data petak tidak valid."
+            )
+
         plant_data = data.get("plant")
+
         return cls(
             position=int(data["position"]),
-            plant=None if plant_data is None else Plant.from_dict(plant_data),
+            plant=(
+                None
+                if plant_data is None
+                else Plant.from_dict(
+                    plant_data
+                )
+            ),
         )
